@@ -34,21 +34,18 @@ program main
     end interface
     
     integer :: i, ios, file_size, arg_count
-    character(len=256) :: inputFile, search_name
+    character(len=256) :: inputFile, search_name,GMOFile
     integer, parameter :: xor_key = 11
     type(c_ptr) :: file_ptr
     integer :: bytes_read
     character(len=:), allocatable :: raw_data, binary_gz_data
 
     arg_count = command_argument_count()
-    if (arg_count < 1) stop "Usage: .\main.exe <path_to_dat> [level_name]"
+    if (arg_count < 3) stop "Usage: .\main.exe <path_to_dat> <level_name> <GMO File>"
     
     call get_command_argument(1, inputFile)
-    if (arg_count >= 2) then
-        call get_command_argument(2, search_name)
-    else
-        search_name = "GDTRAN" 
-    end if
+    call get_command_argument(2, search_name)
+    call get_command_argument(3, GMOFile)
 
     inquire(file=trim(inputFile), size=file_size, iostat=ios)
     if (ios /= 0) stop 'FILE NOT FOUND: ' // trim(inputFile)
@@ -150,15 +147,14 @@ program main
                                 start_ptr = i + 1
                             end if
                         end do
-
-                        print *, "Injecting 50 new blocks..."
-                        do i = 1, 50
-                            x = 500 + (i * 30)
-                            y = 60 + (i * 15)
-                    
-                            write(temp_obj, '(A,I0,A,I0,A,I0,A)') "1,1,2,", x, ",3,", y, ";"
+                        print *, "Injecting from file "//GMOFile
+                        open(unit=30, file=GMOFile, status='old')
+                        do
+                            read(30, '(A)', iostat=ios) temp_obj
+                            if (ios /= 0) exit
                             modded_content = modded_content // trim(temp_obj)
                         end do
+                        close(30)
 
                         write_ptr = gzopen("modded_level.gz" // c_null_char, "wb" // c_null_char)
                         if (c_associated(write_ptr)) then
